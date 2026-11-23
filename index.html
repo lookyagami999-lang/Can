@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+ <html lang="th">
+ <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>ระบบแจ้งปัญหาอัจฉริยะ — เทศบาลตำบลม่วงน้อย</title>
+     
+     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+     
+     <style>
+         :root {
+             --primary: #004B93;
+             --primary-dark: #003A72;
+             --success: #16A34A;
+             --light: #F8FAFC;
+             --gray: #E2E8F0;
+             --dark: #1E293B;
+             --radius: 12px;
+             --transition: all 0.3s ease;
+         }
+         * {margin: 0; padding: 0; box-sizing: border-box; font-family: "Noto Sans Thai", sans-serif;}
+         body {background: linear-gradient(180deg, #EFF6FF 0%, #FFFFFF 100%); min-height: 100vh;}
+         .header {
+             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+             color: white; padding: 24px 16px; text-align: center;
+         }
+         .header h1 {font-size: 20px; margin-bottom: 4px;}
+         .header p {font-size: 13px; opacity: 0.9;}
+         .container {max-width: 640px; margin: 0 auto; padding: 20px 16px;}
+         .alert-box {
+             background: #FFFBEB; border: 1px solid #FDE68A; border-radius: var(--radius);
+             padding: 14px 16px; margin-bottom: 20px; font-size: 13px;
+             color: #92400E; line-height: 1.7;
+         }
+         .card {
+             background: white; border-radius: var(--radius); padding: 22px;
+             box-shadow: 0 2px 12px rgba(0,75,147,0.08); margin-bottom: 20px;
+         }
+         .card h2 {font-size: 17px; color: var(--dark); margin-bottom: 16px;}
+         .btn {
+             display: flex; align-items: center; justify-content: center; gap: 10px;
+             padding: 14px 20px; border-radius: 8px; font-size: 16px; font-weight: 500;
+             border: none; cursor: pointer; width: 100%; margin-bottom: 10px;
+             text-decoration: none; transition: var(--transition);
+         }
+         .btn-primary {background: var(--primary); color: white;}
+         .btn-primary:hover {background: var(--primary-dark);}
+         .btn-success {background: var(--success); color: white;}
+         .btn-outline {background: white; color: var(--primary); border: 2px solid var(--primary);}
+         #map {height: 280px; border-radius: 8px; margin: 12px 0; border: 1px solid var(--gray);}
+         .coords-box {
+             background: var(--light); padding: 12px; border-radius: 6px;
+             font-size: 13px; color: #334155; margin: 10px 0;
+             border-left: 3px solid var(--primary); word-break: break-all;
+         }
+         .hidden {display: none !important;}
+     </style>
+ </head>
+ <body>
+ <div class="header">
+     <h1>🤖 ระบบแจ้งปัญหาอัจฉริยะ</h1>
+     <p>เทศบาลตำบลม่วงน้อย อ.ป่าซาง จ.ลำพูน</p>
+ </div>
+ <div class="container">
+     <div class="alert-box">
+         ⚠️ <strong>นโยบายความเป็นส่วนตัว:</strong> ข้อมูลและพิกัดของท่านจะถูกใช้เพื่อการแก้ไขปัญหาเท่านั้น จะไม่เผยแพร่สู่สาธารณะ ตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล
+     </div>
+     <!-- 📍 ขั้นที่ 1: รับพิกัด -->
+     <div class="card">
+         <h2>📍 ขั้นที่ 1: ระบุตำแหน่งที่เกิดปัญหา</h2>
+         <button class="btn btn-success" onclick="getMyLocation()">
+             📍 ใช้ตำแหน่งปัจจุบันของฉัน
+         </button>
+         <p style="text-align:center; font-size:13px; color:#64748B; margin:6px 0;">—— หรือแตะบนแผนที่เพื่อระบุจุดด้วยตัวเอง ——</p>
+         
+         <div id="map"></div>
+         
+         <div class="coords-box" id="coordsDisplay">
+             รอการระบุตำแหน่ง...
+         </div>
+         
+         <button class="btn btn-outline hidden" id="copyBtn" onclick="copyCoords()">
+             📋 คัดลอกพิกัดเพื่อวางในแบบฟอร์ม
+         </button>
+         <button class="btn btn-outline hidden" id="navBtn" onclick="openInNav()" style="margin-top:8px;">
+             🧭 เปิดเส้นทางนำทาง
+         </button>
+     </div>
+     <!-- 📝 ขั้นที่ 2: เปิดฟอร์ม Tally -->
+     <div class="card" style="text-align:center; padding:30px 20px;">
+         <h2>📝 ขั้นที่ 2: กรอกแบบฟอร์ม</h2>
+         <p style="font-size:14px; color:#475569; margin-bottom:20px; line-height:1.7;">
+             1. คัดลอกพิกัดจากด้านบน<br>
+             2. กดปุ่มด้านล่างเพื่อเปิดแบบฟอร์ม<br>
+             3. วางพิกัด + กรอกข้อมูล + กดส่ง
+         </p>
+         
+         <a href="https://tally.so/r/LDPvkJ" 
+            target="_blank" 
+            class="btn btn-primary"
+            style="font-size:17px; padding:16px 24px;">
+             ✅ เปิดแบบฟอร์มเพื่อแจ้งปัญหา
+         </a>
+     </div>
+     <!-- 📞 ข้อมูลติดต่อ -->
+     <div class="card">
+         <h2>📞 ข้อมูลติดต่อเทศบาล</h2>
+         <p style="font-size:14px; line-height:1.9; color:#334155;">
+             <strong>ที่ทำการ:</strong> ต.ม่วงน้อย อ.ป่าซาง จ.ลำพูน 51120<br>
+             <strong>โทร:</strong> 0-5352-0659<br>
+             <strong>เวลาทำการ:</strong> จันทร์–ศุกร์ 08:30–16:30 น.
+         </p>
+     </div>
+ </div>
+ <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+ <script>
+ let map, marker, selectedLat, selectedLng;
+ function initMap(){
+     map = L.map('map').setView([18.683,99.230],13);
+     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+         attribution:'© OpenStreetMap'
+     }).addTo(map);
+     map.on('click',e=>setMarker(e.latlng));
+ }
+ function setMarker(latlng){
+     selectedLat=latlng.lat;selectedLng=latlng.lng;
+     if(marker)map.removeLayer(marker);
+     marker=L.marker([selectedLat,selectedLng]).addTo(map);
+     document.getElementById('coordsDisplay').innerHTML=
+         '✅ พิกัดที่เลือก:<br><strong>'+selectedLat.toFixed(6)+', '+selectedLng.toFixed(6)+'</strong>';
+     document.getElementById('copyBtn').classList.remove('hidden');
+     document.getElementById('navBtn').classList.remove('hidden');
+ }
+ function getMyLocation(){
+     if(!navigator.geolocation){alert('เบราว์เซอร์ไม่รองรับ กรุณาแตะแผนที่แทน');return;}
+     navigator.geolocation.getCurrentPosition(
+         p=>{map.setView([p.coords.latitude,p.coords.longitude],16);
+         setMarker({lat:p.coords.latitude,lng:p.coords.longitude});},
+         ()=>alert('ไม่สามารถเข้าถึงตำแหน่งได้ กรุณาแตะแผนที่แทน')
+     );
+ }
+ function copyCoords(){
+     if(!selectedLat){alert('กรุณาระบุพิกัดก่อน');return;}
+     const t=selectedLat.toFixed(6)+', '+selectedLng.toFixed(6);
+     navigator.clipboard.writeText(t).then(()=>alert('✅ คัดลอกพิกัดเรียบร้อย!\nนำไปวางในแบบฟอร์มได้เลยครับ'));
+ }
+ function openInNav(){
+     if(!selectedLat){alert('กรุณาระบุพิกัดก่อน');return;}
+     window.open('https://www.google.com/maps/dir/?api=1&destination='+selectedLat+','+selectedLng,'_blank');
+ }
+ window.onload=initMap;
+ </script>
+ </body>
+ </html>
